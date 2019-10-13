@@ -4,7 +4,7 @@ int main()
 {
     unsigned char program[] = { 0xFF, 0xFF, 0x04 };
 
-    DanPAVM dpvm = dpvm_newVM(program);
+    DanPaVM dpvm = dpvm_newVM(program);
 
     dpvm_run(&dpvm);
 

@@ -1,4 +1,4 @@
-#DanPa VM
+# DanPa VM
 
 The VM for Stellaris's DanmakuParanoia bullet hell engine (https://github.com/Stellaris-code/DanmakuParanoia)
 

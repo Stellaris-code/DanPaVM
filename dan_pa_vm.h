@@ -18,18 +18,18 @@ typedef struct
     void* _priv_data_stack;
     size_t _priv_data_stack_pointer;
 
-} DanPAVM;
+} DanPaVM;
 
 //Public functions
-DanPAVM dpvm_newVM(const void* code);
+DanPaVM dpvm_newVM(const void* code);
 
-void dpvm_deleteVM(DanPAVM* vm);
+void dpvm_deleteVM(DanPaVM* vm);
 
-void dpvm_run(DanPAVM* vm);
+void dpvm_run(DanPaVM* vm);
 
 //Private functions
-int _dpvm_priv_push_call(DanPAVM* vm);
-int _dpvm_priv_ret(DanPAVM* vm);
+int _dpvm_priv_push_call(DanPaVM* vm);
+int _dpvm_priv_ret(DanPaVM* vm);
 
-int _dpvm_priv_push(DanPAVM* vm, void* src, size_t data_size);
-int _dpvm_priv_pop(DanPAVM* vm, void* dest, size_t data_size);
+int _dpvm_priv_push(DanPaVM* vm, void* src, size_t data_size);
+int _dpvm_priv_pop(DanPaVM* vm, void* dest, size_t data_size);

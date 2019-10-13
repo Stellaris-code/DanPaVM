@@ -13,9 +13,9 @@
 
 #define _DBG_       0xFF
 
-DanPAVM dpvm_newVM(const void* code)
+DanPaVM dpvm_newVM(const void* code)
 {
-    DanPAVM dpvm;
+    DanPaVM dpvm;
 
     //Init the code pointer
     dpvm._priv_program = (const uint8_t*)code;
@@ -30,13 +30,13 @@ DanPAVM dpvm_newVM(const void* code)
     return dpvm;
 }
 
-void dpvm_deleteVM(DanPAVM* vm)
+void dpvm_deleteVM(DanPaVM* vm)
 {
     free(vm->_priv_call_stack);
     free(vm->_priv_data_stack);
 }
 
-void dpvm_run(DanPAVM* vm)
+void dpvm_run(DanPaVM* vm)
 {
     int run = 1;
 
@@ -85,7 +85,7 @@ void dpvm_run(DanPAVM* vm)
 
 
 
-int _dpvm_priv_push_call(DanPAVM* vm)
+int _dpvm_priv_push_call(DanPaVM* vm)
 {
     if (vm->_priv_call_stack_pointer >= 512) //If the IP won't fit
         return 1;
@@ -97,7 +97,7 @@ int _dpvm_priv_push_call(DanPAVM* vm)
     return 0;
 }
 
-int _dpvm_priv_ret(DanPAVM* vm)
+int _dpvm_priv_ret(DanPaVM* vm)
 {
     if (vm->_priv_call_stack_pointer == 0)
         return 1;
@@ -109,7 +109,7 @@ int _dpvm_priv_ret(DanPAVM* vm)
     return 0;
 }
 
-int _dpvm_priv_push(DanPAVM* vm, void* src, size_t data_size)
+int _dpvm_priv_push(DanPaVM* vm, void* src, size_t data_size)
 {
     if (vm->_priv_data_stack_pointer > 0x20000 - data_size)
         return 1;
@@ -121,7 +121,7 @@ int _dpvm_priv_push(DanPAVM* vm, void* src, size_t data_size)
     return 0;
 }
 
-int _dpvm_priv_pop(DanPAVM* vm, void* dest, size_t data_size)
+int _dpvm_priv_pop(DanPaVM* vm, void* dest, size_t data_size)
 {
     if (vm->_priv_data_stack_pointer < data_size)
         return 1;
