@@ -10,10 +10,12 @@
 #define _BRT_       0x02
 #define _BRF_       0x03
 #define _JMP_       0x04
+#define _CALL_      0x05
+#define _RET_       0x06
 
 #define _DBG_       0xFF
 
-DanPaVM dpvm_newVM(const void* code)
+DanPaVM dpvm_new_VM(const void* code)
 {
     DanPaVM dpvm;
 
@@ -27,10 +29,15 @@ DanPaVM dpvm_newVM(const void* code)
     dpvm._priv_data_stack = malloc(0x20000); //128 kB
     dpvm._priv_data_stack_pointer = 0;
 
+    //For testing, we put offset for our test call and jmp
+    int16_t offset = 3;
+    _dpvm_priv_push(&dpvm, &offset, sizeof(offset));
+    _dpvm_priv_push(&dpvm, &offset, sizeof(offset));
+
     return dpvm;
 }
 
-void dpvm_deleteVM(DanPaVM* vm)
+void dpvm_delete_VM(DanPaVM* vm)
 {
     free(vm->_priv_call_stack);
     free(vm->_priv_data_stack);
@@ -50,17 +57,39 @@ void dpvm_run(DanPaVM* vm)
 
         case (_JMP_):
             {
-                //TEST
+                int16_t offset;
+                if (_dpvm_priv_pop(vm, &offset, sizeof(offset)))
                 {
-                    int16_t offset = -2;
-                    _dpvm_priv_push(vm, &offset, sizeof(offset));
+                    fprintf(stderr, "DPVM : JMP : Failed to pop offset from data stack\n");
+                    run = 0;
+                }
+                vm->_priv_program_pointer += (offset - 1);
+            }
+            break;
+
+        case (_CALL_):
+            {
+                if (_dpvm_priv_push_call(vm))
+                {
+                    fprintf(stderr, "DPVM : CALL : Failed to push current IP to call stack\n");
+                    run = 0;
                 }
 
-
                 int16_t offset;
-                _dpvm_priv_pop(vm, &offset, sizeof(offset));
-                //_dpvm_priv_push_call(vm); //Actually no, thats a jump, not a call
+                if (_dpvm_priv_pop(vm, &offset, sizeof(offset)))
+                {
+                    fprintf(stderr, "DPVM : CALL : Failed to pop offset from data stack\n");
+                    run = 0;
+                }
                 vm->_priv_program_pointer += (offset - 1);
+            }
+            break;
+
+        case (_RET_):
+            if (_dpvm_priv_ret(vm))
+            {
+                fprintf(stderr, "DPVM : RET : Failed to pop IP from call stack\n");
+                run = 0;
             }
             break;
 

@@ -21,9 +21,9 @@ typedef struct
 } DanPaVM;
 
 //Public functions
-DanPaVM dpvm_newVM(const void* code);
+DanPaVM dpvm_new_VM(const void* code);
 
-void dpvm_deleteVM(DanPaVM* vm);
+void dpvm_delete_VM(DanPaVM* vm);
 
 void dpvm_run(DanPaVM* vm);
 
