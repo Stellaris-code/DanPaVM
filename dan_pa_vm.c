@@ -4,16 +4,11 @@
 #include <stdio.h>      //Output
 #include <string.h>     //memcpy
 
-//OP codes
-#define _NOP_       0x00
-#define _SYSCALL_   0x01
-#define _BRT_       0x02
-#define _BRF_       0x03
-#define _JMP_       0x04
-#define _CALL_      0x05
-#define _RET_       0x06
+#include "dpvm_opcodes.h"
 
-#define _DBG_       0xFF
+//Other defines
+//#define DATA_STACK_SIZE
+//#define CALL_STACK_SIZE
 
 DanPaVM dpvm_new_VM(const void* code)
 {
@@ -24,15 +19,10 @@ DanPaVM dpvm_new_VM(const void* code)
     dpvm._priv_program_pointer = 0;
 
     //Init both stacks
-    dpvm._priv_call_stack = malloc(sizeof(size_t) * 512); // 512 calls
+    dpvm._priv_call_stack = malloc(sizeof(size_t) * 0x200); // 512 calls
     dpvm._priv_call_stack_pointer = 0;
-    dpvm._priv_data_stack = malloc(0x20000); //128 kB
+    dpvm._priv_data_stack = malloc(sizeof(uint32_t) * 0x8000); //128 kB
     dpvm._priv_data_stack_pointer = 0;
-
-    //For testing, we put offset for our test call and jmp
-    int16_t offset = 3;
-    _dpvm_priv_push(&dpvm, &offset, sizeof(offset));
-    _dpvm_priv_push(&dpvm, &offset, sizeof(offset));
 
     return dpvm;
 }
@@ -57,38 +47,36 @@ void dpvm_run(DanPaVM* vm)
 
         case (_JMP_):
             {
-                int16_t offset;
-                if (_dpvm_priv_pop(vm, &offset, sizeof(offset)))
-                {
-                    fprintf(stderr, "DPVM : JMP : Failed to pop offset from data stack\n");
-                    run = 0;
-                }
-                vm->_priv_program_pointer += (offset - 1);
+                int16_t offset = 0;
+
+                memcpy(&offset, vm->_priv_program + vm->_priv_program_pointer + 1, sizeof(offset));
+                vm->_priv_program_pointer += sizeof(offset) + offset - 1;
+                printf("TEST Jmp : offset = %d\n", offset);
             }
             break;
 
         case (_CALL_):
             {
+                int16_t offset = 0;
+                memcpy(&offset, vm->_priv_program + vm->_priv_program_pointer + 1, sizeof(offset));
+
+                vm->_priv_program_pointer += sizeof(offset);
+
                 if (_dpvm_priv_push_call(vm))
                 {
                     fprintf(stderr, "DPVM : CALL : Failed to push current IP to call stack\n");
                     run = 0;
                 }
 
-                int16_t offset;
-                if (_dpvm_priv_pop(vm, &offset, sizeof(offset)))
-                {
-                    fprintf(stderr, "DPVM : CALL : Failed to pop offset from data stack\n");
-                    run = 0;
-                }
-                vm->_priv_program_pointer += (offset - 1);
+                vm->_priv_program_pointer += offset - 1;
+                printf("TEST Call : offset = %d\n", offset);
             }
             break;
 
         case (_RET_):
             if (_dpvm_priv_ret(vm))
             {
-                fprintf(stderr, "DPVM : RET : Failed to pop IP from call stack\n");
+                printf("DPVM : Code returned at 0x%X with empty call stack, stopping.\n", vm->_priv_program_pointer);
                 run = 0;
             }
             break;
@@ -116,7 +104,7 @@ void dpvm_run(DanPaVM* vm)
 
 int _dpvm_priv_push_call(DanPaVM* vm)
 {
-    if (vm->_priv_call_stack_pointer >= 512) //If the IP won't fit
+    if (vm->_priv_call_stack_pointer >= 0x200) //If the IP won't fit
         return 1;
 
     vm->_priv_call_stack[vm->_priv_call_stack_pointer] = vm->_priv_program_pointer;
@@ -138,26 +126,26 @@ int _dpvm_priv_ret(DanPaVM* vm)
     return 0;
 }
 
-int _dpvm_priv_push(DanPaVM* vm, void* src, size_t data_size)
+int _dpvm_priv_push(DanPaVM* vm, void* src)
 {
-    if (vm->_priv_data_stack_pointer > 0x20000 - data_size)
+    if (vm->_priv_data_stack_pointer >= 0x8000)
         return 1;
 
-    memcpy(vm->_priv_data_stack + vm->_priv_data_stack_pointer, src, data_size);
+    vm->_priv_data_stack[vm->_priv_data_stack_pointer] = *((int32_t*)src);
 
-    vm->_priv_data_stack_pointer += data_size;
+    vm->_priv_data_stack_pointer++;
 
     return 0;
 }
 
-int _dpvm_priv_pop(DanPaVM* vm, void* dest, size_t data_size)
+int _dpvm_priv_pop(DanPaVM* vm, void* dest)
 {
-    if (vm->_priv_data_stack_pointer < data_size)
+    if (vm->_priv_data_stack_pointer == 0)
         return 1;
 
-    vm->_priv_data_stack_pointer -= data_size;
+    vm->_priv_data_stack_pointer--;
 
-    memcpy(dest, vm->_priv_data_stack + vm->_priv_data_stack_pointer, data_size);
+    *((int32_t*)dest) = vm->_priv_data_stack[vm->_priv_data_stack_pointer];
 
     return 0;
 }
