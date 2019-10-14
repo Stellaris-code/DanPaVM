@@ -45,6 +45,26 @@ void dpvm_run(DanPaVM* vm)
         {
         case (_NOP_): break;    //Do nothing
 
+        //case (_SYSCALL_):break;
+
+        case (_BRT_):
+            {
+                int32_t condition = 0;
+                if (_dpvm_priv_pop(vm, &condition))
+                {
+                    fprintf(stderr, "DPVM : BRT : Failed to pop condition value\n");
+                    run = 0;
+                }
+
+                if (condition)
+            }
+
+            break;
+
+        case (_BRF_):
+
+            break;
+
         case (_JMP_):
             {
                 int16_t offset = 0;

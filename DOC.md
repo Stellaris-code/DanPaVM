@@ -69,8 +69,8 @@ If it isn't precised, the words pop and push refer to the data stack
 | 0x1A		| `MULI`	| Pops two integers, multiplies them and pushes the result back
 | 0x1B		| `DIVI`	| Pops two integers, divides the first one to the second and pushes the result back	(?)
 | 0x1C		| `MODI`	| ?
-| 0x1D		| ?			|
-| 0x1E		| ?			|
+| 0x1D		| `INC`		| Increments the top integer of the stack 
+| 0x1E		| `DEC`		| Decrements the top integer of the stack
 | 0x1F		| ?			|
 | 0x20		| `ADDF`	| Pops two floats, adds them and pushes the result
 | 0x21		| `SUBF`	| Pops two floats, substract the first one to the second and pushes the result (?)
