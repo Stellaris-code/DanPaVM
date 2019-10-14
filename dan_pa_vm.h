@@ -1,5 +1,6 @@
 #include <stddef.h>     //size_t
 #include <stdint.h>     //Fixed size ints
+#include <pthread.h>    //Mutexes
 
 typedef struct
 {
@@ -18,10 +19,15 @@ typedef struct
     int32_t* _priv_data_stack;
     size_t _priv_data_stack_pointer;
 
+    //Variables
+    int32_t* _priv_global_vars;
+    int32_t* _priv_local_vars;
+    pthread_mutex_t* _priv_global_vars_mutex;
+
 } DanPaVM;
 
 //Public functions
-DanPaVM dpvm_new_VM(const void* code);
+DanPaVM dpvm_new_VM(const void* code, void* global_vars, pthread_mutex_t* global_vars_mutex);
 
 void dpvm_delete_VM(DanPaVM* vm);
 

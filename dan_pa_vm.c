@@ -10,7 +10,7 @@
 //#define DATA_STACK_SIZE
 //#define CALL_STACK_SIZE
 
-DanPaVM dpvm_new_VM(const void* code)
+DanPaVM dpvm_new_VM(const void* code, void* global_vars, pthread_mutex_t* global_vars_mutex)
 {
     DanPaVM dpvm;
 
@@ -23,6 +23,11 @@ DanPaVM dpvm_new_VM(const void* code)
     dpvm._priv_call_stack_pointer = 0;
     dpvm._priv_data_stack = malloc(sizeof(uint32_t) * 0x8000); //128 kB
     dpvm._priv_data_stack_pointer = 0;
+
+    //Variables
+    dpvm._priv_local_vars = calloc(0xFF, sizeof(int32_t));
+    dpvm._priv_global_vars = global_vars;
+    dpvm._priv_global_vars_mutex = global_vars_mutex;   //We want thread safety with global vars!
 
     return dpvm;
 }
@@ -57,28 +62,47 @@ void dpvm_run(DanPaVM* vm)
                 }
 
                 if (condition)
-            }
+                {
+                    int16_t offset = 0;
 
+                    memcpy(&offset, vm->_priv_program + vm->_priv_program_pointer + 1, 2);
+                    vm->_priv_program_pointer += sizeof(offset) + offset - 1;
+                }
+            }
             break;
 
         case (_BRF_):
+            {
+                int32_t condition = 0;
+                if (_dpvm_priv_pop(vm, &condition))
+                {
+                    fprintf(stderr, "DPVM : BRT : Failed to pop condition value\n");
+                    run = 0;
+                }
 
+                if (!condition)
+                {
+                    int16_t offset = 0;
+
+                    memcpy(&offset, vm->_priv_program + vm->_priv_program_pointer + 1, 2);
+                    vm->_priv_program_pointer += sizeof(offset) + offset - 1;
+                }
+            }
             break;
 
         case (_JMP_):
             {
                 int16_t offset = 0;
 
-                memcpy(&offset, vm->_priv_program + vm->_priv_program_pointer + 1, sizeof(offset));
+                memcpy(&offset, vm->_priv_program + vm->_priv_program_pointer + 1, 2);
                 vm->_priv_program_pointer += sizeof(offset) + offset - 1;
-                printf("TEST Jmp : offset = %d\n", offset);
             }
             break;
 
         case (_CALL_):
             {
                 int16_t offset = 0;
-                memcpy(&offset, vm->_priv_program + vm->_priv_program_pointer + 1, sizeof(offset));
+                memcpy(&offset, vm->_priv_program + vm->_priv_program_pointer + 1, 2);
 
                 vm->_priv_program_pointer += sizeof(offset);
 
@@ -89,15 +113,87 @@ void dpvm_run(DanPaVM* vm)
                 }
 
                 vm->_priv_program_pointer += offset - 1;
-                printf("TEST Call : offset = %d\n", offset);
             }
             break;
 
         case (_RET_):
             if (_dpvm_priv_ret(vm))
-            {
-                printf("DPVM : Code returned at 0x%X with empty call stack, stopping.\n", vm->_priv_program_pointer);
                 run = 0;
+            break;
+
+        case (_LDLOC_):
+            {
+                uint8_t local_var = 0;
+                memcpy(&local_var, vm->_priv_program + vm->_priv_program_pointer + 1, 1);
+
+                vm->_priv_program_pointer += sizeof(local_var);
+
+                int32_t var = vm->_priv_local_vars[local_var];
+
+                if (_dpvm_priv_push(vm, &var))
+                {
+                    fprintf(stderr, "DPVM : LDLOC : Failed to push loaded value to stack\n");
+                    run = 0;
+                }
+            }
+            break;
+
+        case (_LDGLB_):
+            {
+                uint8_t global_var = 0;
+                memcpy(&global_var, vm->_priv_program + vm->_priv_program_pointer + 1, 1);
+
+                vm->_priv_program_pointer += sizeof(global_var);
+
+                pthread_mutex_lock(vm->_priv_global_vars_mutex);
+                int32_t var = vm->_priv_global_vars[global_var];
+                pthread_mutex_unlock(vm->_priv_global_vars_mutex);
+
+                if (_dpvm_priv_push(vm, &var))
+                {
+                    fprintf(stderr, "DPVM : LDGLB : Failed to push loaded value to stack\n");
+                    run = 0;
+                }
+            }
+            break;
+
+        case (_STLOC_):
+            {
+                uint8_t local_var = 0;
+                memcpy(&local_var, vm->_priv_program + vm->_priv_program_pointer + 1, 1);
+
+                vm->_priv_program_pointer += sizeof(local_var);
+
+                int32_t value = 0;
+                if (_dpvm_priv_pop(vm, &value))
+                {
+                    fprintf(stderr, "DPVM : STLOC : Failed to pop loaded value from stack\n");
+                    run = 0;
+                }
+                else
+                    vm->_priv_local_vars[local_var] = value;
+            }
+            break;
+
+        case (_STGLB_):
+            {
+                uint8_t global_var = 0;
+                memcpy(&global_var, vm->_priv_program + vm->_priv_program_pointer + 1, 1);
+
+                vm->_priv_program_pointer += sizeof(global_var);
+
+                int32_t value = 0;
+                if (_dpvm_priv_pop(vm, &value))
+                {
+                    fprintf(stderr, "DPVM : STGLB : Failed to pop loaded value from stack\n");
+                    run = 0;
+                }
+                else
+                {
+                    pthread_mutex_lock(vm->_priv_global_vars_mutex);
+                    vm->_priv_global_vars[global_var] = value;
+                    pthread_mutex_lock(vm->_priv_global_vars_mutex);
+                }
             }
             break;
 
