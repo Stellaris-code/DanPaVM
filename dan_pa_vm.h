@@ -1,3 +1,6 @@
+#ifndef DAN_PA_VM_H
+#define DAN_PA_VM_H
+
 #include <stddef.h>     //size_t
 #include <stdint.h>     //Fixed size ints
 
@@ -24,6 +27,9 @@ typedef struct
     //Variables
     int32_t* _priv_global_vars;
 
+    //Misc
+    uint32_t _priv_error_flag;
+    int _priv_run;
 } DanPaVM;
 
 //Public functions
@@ -39,3 +45,5 @@ int _dpvm_priv_ret(DanPaVM* vm);
 
 int _dpvm_priv_push(DanPaVM* vm, void* src);
 int _dpvm_priv_pop(DanPaVM* vm, void* dest);
+
+#endif // DAN_PA_VM_H
