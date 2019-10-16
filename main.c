@@ -4,20 +4,23 @@
 
 #include <stdlib.h>
 
-#include <pthread.h>
-
 int main()
 {
-    unsigned char program[] = { _DBG_, _CALL_, 4, 0,  _DBG_, _JMP_, 3, 0, _DBG_, _RET_, _DBG_, _RET_ };
+    unsigned char program[] =
+    {
+        _DBG_,
+        _PUSH_, 3, _STLOC_, 3, _DBG_,
+        _PUSH_, 6, _STGLB_, 0, _DBG_,
+        _CALL_, 5, 0,
+        _DBG_, _RET_,
+        _PUSH_, 3, _STLOC_, 0, _DBG_,
+        _RET_
+    };
 
-    void* global = calloc(256, 4);
-    pthread_mutex_t lock;
 
-    pthread_mutex_init(&lock, NULL);
+    DanPaVM dpvm = dpvm_new_VM(program);
 
-    DanPaVM dpvm = dpvm_new_VM(program, global, &lock);
-
-    dpvm_run(&dpvm);
+    dpvm_run(&dpvm, 0);
 
     dpvm_delete_VM(&dpvm);
 

@@ -3,6 +3,7 @@
 #include <stdlib.h>     //Memory management
 #include <stdio.h>      //Output
 #include <string.h>     //memcpy
+#include <assert.h>
 
 #include "dpvm_opcodes.h"
 
@@ -10,7 +11,7 @@
 //#define DATA_STACK_SIZE
 //#define CALL_STACK_SIZE
 
-DanPaVM dpvm_new_VM(const void* code, void* global_vars, pthread_mutex_t* global_vars_mutex)
+DanPaVM dpvm_new_VM(const void* code)
 {
     DanPaVM dpvm;
 
@@ -25,9 +26,9 @@ DanPaVM dpvm_new_VM(const void* code, void* global_vars, pthread_mutex_t* global
     dpvm._priv_data_stack_pointer = 0;
 
     //Variables
-    dpvm._priv_local_vars = calloc(0xFF, sizeof(int32_t));
-    dpvm._priv_global_vars = global_vars;
-    dpvm._priv_global_vars_mutex = global_vars_mutex;   //We want thread safety with global vars!
+    dpvm._priv_local_vars_stack = malloc(sizeof(void*) * (0x200 + 1)); //One local variables area per call + 1 for the entry
+    dpvm._priv_local_vars_stack_pointer = 0;
+    dpvm._priv_global_vars = calloc(0xFF, 4);
 
     return dpvm;
 }
@@ -36,10 +37,18 @@ void dpvm_delete_VM(DanPaVM* vm)
 {
     free(vm->_priv_call_stack);
     free(vm->_priv_data_stack);
+    free(vm->_priv_global_vars);
 }
 
-void dpvm_run(DanPaVM* vm)
+void dpvm_run(DanPaVM* vm, uint8_t entry)
 {
+    assert(vm->_priv_local_vars_stack_pointer == 0);
+
+    vm->_priv_local_vars_stack[vm->_priv_local_vars_stack_pointer] = calloc(0xFF, 4);
+    vm->_priv_local_vars_stack_pointer++;
+
+    vm->_priv_program_pointer = entry;
+
     int run = 1;
 
     while (run)
@@ -66,7 +75,8 @@ void dpvm_run(DanPaVM* vm)
                     int16_t offset = 0;
 
                     memcpy(&offset, vm->_priv_program + vm->_priv_program_pointer + 1, 2);
-                    vm->_priv_program_pointer += sizeof(offset) + offset - 1;
+
+                    vm->_priv_program_pointer += offset - 1;
                 }
             }
             break;
@@ -85,7 +95,7 @@ void dpvm_run(DanPaVM* vm)
                     int16_t offset = 0;
 
                     memcpy(&offset, vm->_priv_program + vm->_priv_program_pointer + 1, 2);
-                    vm->_priv_program_pointer += sizeof(offset) + offset - 1;
+                    vm->_priv_program_pointer += offset - 1;
                 }
             }
             break;
@@ -95,7 +105,7 @@ void dpvm_run(DanPaVM* vm)
                 int16_t offset = 0;
 
                 memcpy(&offset, vm->_priv_program + vm->_priv_program_pointer + 1, 2);
-                vm->_priv_program_pointer += sizeof(offset) + offset - 1;
+                vm->_priv_program_pointer += offset - 1;
             }
             break;
 
@@ -103,8 +113,6 @@ void dpvm_run(DanPaVM* vm)
             {
                 int16_t offset = 0;
                 memcpy(&offset, vm->_priv_program + vm->_priv_program_pointer + 1, 2);
-
-                vm->_priv_program_pointer += sizeof(offset);
 
                 if (_dpvm_priv_push_call(vm))
                 {
@@ -128,7 +136,7 @@ void dpvm_run(DanPaVM* vm)
 
                 vm->_priv_program_pointer += sizeof(local_var);
 
-                int32_t var = vm->_priv_local_vars[local_var];
+                int32_t var = vm->_priv_local_vars_stack[vm->_priv_local_vars_stack_pointer - 1][local_var];
 
                 if (_dpvm_priv_push(vm, &var))
                 {
@@ -145,9 +153,7 @@ void dpvm_run(DanPaVM* vm)
 
                 vm->_priv_program_pointer += sizeof(global_var);
 
-                pthread_mutex_lock(vm->_priv_global_vars_mutex);
                 int32_t var = vm->_priv_global_vars[global_var];
-                pthread_mutex_unlock(vm->_priv_global_vars_mutex);
 
                 if (_dpvm_priv_push(vm, &var))
                 {
@@ -171,7 +177,7 @@ void dpvm_run(DanPaVM* vm)
                     run = 0;
                 }
                 else
-                    vm->_priv_local_vars[local_var] = value;
+                    vm->_priv_local_vars_stack[vm->_priv_local_vars_stack_pointer - 1][local_var] = value;
             }
             break;
 
@@ -189,17 +195,35 @@ void dpvm_run(DanPaVM* vm)
                     run = 0;
                 }
                 else
-                {
-                    pthread_mutex_lock(vm->_priv_global_vars_mutex);
                     vm->_priv_global_vars[global_var] = value;
-                    pthread_mutex_lock(vm->_priv_global_vars_mutex);
-                }
+            }
+            break;
+
+        case (_PUSH_):  //TEMP
+            {
+                uint8_t val = 0;
+                memcpy(&val, vm->_priv_program + vm->_priv_program_pointer + 1, 1);
+
+                vm->_priv_program_pointer += sizeof(val);
+
+                int32_t val32 = val;
+
+                _dpvm_priv_push(vm, &val32);
             }
             break;
 
         case (_DBG_):   //Give debug info
             printf("DPVM Debug :\n");
             printf("    IP : 0x%X\n", vm->_priv_program_pointer);
+            printf("    Global Vars (16 values only) : ");
+            for (int i = 0; i < 0xF; i++)
+                printf("%X, ", vm->_priv_global_vars[i]);
+            printf("\n");
+            printf("    Local Vars (16 values only) : ");
+            for (int i = 0; i < 0xF; i++)
+                printf("%X, ", vm->_priv_local_vars_stack[vm->_priv_local_vars_stack_pointer - 1][i]);
+            printf("\n");
+
             break;
 
         default:
@@ -212,6 +236,11 @@ void dpvm_run(DanPaVM* vm)
 
         vm->_priv_program_pointer++;
     }
+
+    assert(vm->_priv_local_vars_stack_pointer == 1);
+
+    vm->_priv_local_vars_stack_pointer--;
+    free(vm->_priv_local_vars_stack[vm->_priv_local_vars_stack_pointer]);
 }
 
 
@@ -220,24 +249,32 @@ void dpvm_run(DanPaVM* vm)
 
 int _dpvm_priv_push_call(DanPaVM* vm)
 {
+    assert(vm->_priv_call_stack_pointer == vm->_priv_local_vars_stack_pointer - 1);
+
     if (vm->_priv_call_stack_pointer >= 0x200) //If the IP won't fit
         return 1;
 
-    vm->_priv_call_stack[vm->_priv_call_stack_pointer] = vm->_priv_program_pointer;
-
+    vm->_priv_call_stack[vm->_priv_call_stack_pointer] = vm->_priv_program_pointer + 2;
     vm->_priv_call_stack_pointer++;
+
+    vm->_priv_local_vars_stack[vm->_priv_local_vars_stack_pointer] = calloc(0xFF, 4);
+    vm->_priv_local_vars_stack_pointer++;
 
     return 0;
 }
 
 int _dpvm_priv_ret(DanPaVM* vm)
 {
+    assert(vm->_priv_call_stack_pointer == vm->_priv_local_vars_stack_pointer - 1);
+
     if (vm->_priv_call_stack_pointer == 0)
         return 1;
 
     vm->_priv_call_stack_pointer--;
-
     vm->_priv_program_pointer = vm->_priv_call_stack[vm->_priv_call_stack_pointer];
+
+    vm->_priv_local_vars_stack_pointer--;
+    free(vm->_priv_local_vars_stack[vm->_priv_local_vars_stack_pointer]);
 
     return 0;
 }

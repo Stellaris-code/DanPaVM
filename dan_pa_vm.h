@@ -1,6 +1,5 @@
 #include <stddef.h>     //size_t
 #include <stdint.h>     //Fixed size ints
-#include <pthread.h>    //Mutexes
 
 typedef struct
 {
@@ -13,6 +12,9 @@ typedef struct
     //Next available stack space is at call_stack + call_stack_pointer
     uint32_t* _priv_call_stack;
     size_t _priv_call_stack_pointer;
+    //For each call theres an array of 256 values of 32 bits allocated, for variables local to the function
+    int32_t** _priv_local_vars_stack;
+    size_t _priv_local_vars_stack_pointer;
 
     //Data stack
     //Next available stack space is at data_stack + data_stack_pointer
@@ -21,17 +23,15 @@ typedef struct
 
     //Variables
     int32_t* _priv_global_vars;
-    int32_t* _priv_local_vars;
-    pthread_mutex_t* _priv_global_vars_mutex;
 
 } DanPaVM;
 
 //Public functions
-DanPaVM dpvm_new_VM(const void* code, void* global_vars, pthread_mutex_t* global_vars_mutex);
+DanPaVM dpvm_new_VM(const void* code);
 
 void dpvm_delete_VM(DanPaVM* vm);
 
-void dpvm_run(DanPaVM* vm);
+void dpvm_run(DanPaVM* vm, uint8_t entry);
 
 //Private functions
 int _dpvm_priv_push_call(DanPaVM* vm);
