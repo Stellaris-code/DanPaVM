@@ -160,18 +160,70 @@ void _dpvm_priv_ARRESIZE_op(DanPaVM* vm)
     vm->_priv_run = 0;
 }
 
+void _dpvm_priv_ADDI_op(DanPaVM* vm)
+{}
+void _dpvm_priv_SUBI_op(DanPaVM* vm)
+{}
+void _dpvm_priv_AND_op(DanPaVM* vm)
+{}
+void _dpvm_priv_OR_op(DanPaVM* vm)
+{}
+void _dpvm_priv_XOR_op(DanPaVM* vm)
+{}
+void _dpvm_priv_NOT_op(DanPaVM* vm)
+{}
+void _dpvm_priv_SHL_op(DanPaVM* vm)
+{}
+void _dpvm_priv_SHR_op(DanPaVM* vm)
+{}
+void _dpvm_priv_LSR_op(DanPaVM* vm)
+{}
+void _dpvm_priv_NEGI_op(DanPaVM* vm)
+{}
+void _dpvm_priv_MULI_op(DanPaVM* vm)
+{}
+void _dpvm_priv_DIVI_op(DanPaVM* vm)
+{}
+void _dpvm_priv_MODI_op(DanPaVM* vm)
+{}
+void _dpvm_priv_INC_op(DanPaVM* vm)
+{}
+void _dpvm_priv_DEC_op(DanPaVM* vm)
+{}
+
+void _dpvm_priv_ADDF_op(DanPaVM* vm)
+{}
+void _dpvm_priv_SUBF_op(DanPaVM* vm)
+{}
+void _dpvm_priv_NEGF_op(DanPaVM* vm)
+{}
+void _dpvm_priv_MULF_op(DanPaVM* vm)
+{}
+void _dpvm_priv_DIVF_op(DanPaVM* vm)
+{}
+void _dpvm_priv_MODF_op(DanPaVM* vm)
+{}
+
+void _dpvm_priv_PUSH_op(DanPaVM* vm)
+{}
+void _dpvm_priv_SWAP_op(DanPaVM* vm)
+{}
+void _dpvm_priv_DUP_op(DanPaVM* vm)
+{}
+
+void _dpvm_priv_I2F_op(DanPaVM* vm)
+{}
+void _dpvm_priv_F2I_op(DanPaVM* vm)
+{}
+void _dpvm_priv_I2C_op(DanPaVM* vm)
+{}
+void _dpvm_priv_C2I_op(DanPaVM* vm)
+{}
+
 void _dpvm_priv_DBG_op(DanPaVM* vm)
 {
     printf("DPVM Debug :\n");
-    printf("    IP : 0x%X\n", vm->_priv_program_pointer);
-    printf("    Global Vars (16 values only) : ");
-    for (int i = 0; i < 0xF; i++)
-        printf("%X, ", vm->_priv_global_vars[i]);
-    printf("\n");
-    printf("    Local Vars (16 values only) : ");
-    for (int i = 0; i < 0xF; i++)
-        printf("%X, ", vm->_priv_local_vars_stack[vm->_priv_local_vars_stack_pointer - 1][i]);
-    printf("\n");
+
 }
 
 

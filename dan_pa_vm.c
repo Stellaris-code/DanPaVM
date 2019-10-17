@@ -66,7 +66,7 @@ void dpvm_run(DanPaVM* vm, uint8_t entry)
 
         if (vm->_priv_error_flag & 1)   //Unknown instruction
         {
-            fprintf(stderr, "DPVM : OP 0x%X unimplemented!\n");
+            fprintf(stderr, "DPVM : OP 0x%X unimplemented!\n", op_code);
             fprintf(stderr, "       Program pointer is 0x%X\n", vm->_priv_program_pointer);
             fprintf(stderr, "       Stopping VM.\n");
 
