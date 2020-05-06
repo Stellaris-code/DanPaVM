@@ -1,6 +1,7 @@
 # Build Results
 bin/
 obj/
+build/
 
 # Dlls
 *.dll
